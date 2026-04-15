@@ -1,0 +1,138 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: /users/{userId}
+// Document ID: userId (Firebase Auth UID)
+// Fields:
+//   - uid: string (required)
+//   - email: string (required, email format)
+//   - displayName: string (optional)
+//   - photoURL: string (optional)
+//   - preferences: map (optional)
+//
+// Collection: /users/{userId}/reminders/{reminderId}
+// Fields:
+//   - uid: string (required)
+//   - title: string (required, 1-200 chars)
+//   - time: string (required, ISO8601)
+//   - completed: bool (required)
+//   - createdAt: string (required, ISO8601)
+//
+// Collection: /users/{userId}/tasks/{taskId}
+// Fields:
+//   - uid: string (required)
+//   - title: string (required, 1-200 chars)
+//   - description: string (optional, 0-1000 chars)
+//   - date: string (required, YYYY-MM-DD)
+//   - startTime: string (optional, HH:mm)
+//   - completed: bool (required)
+//   - createdAt: string (required, ISO8601)
+//
+// Collection: /users/{userId}/messages/{messageId}
+// Fields:
+//   - uid: string (required)
+//   - role: string (required, ['user', 'assistant'])
+//   - content: string (required, 1-5000 chars)
+//   - timestamp: string (required, ISO8601)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid &&
+             isValidEmail(data.email);
+    }
+
+    function isValidReminder(data) {
+      return data.uid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             isValidDateString(data.time) &&
+             data.completed is bool &&
+             (!('notified' in data) || data.notified is bool) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidTask(data) {
+      return data.uid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.completed is bool &&
+             (!('notified' in data) || data.notified is bool) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidMessage(data) {
+      return data.uid == request.auth.uid &&
+             data.role in ['user', 'assistant'] &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
+             isValidDateString(data.timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      match /reminders/{reminderId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidReminder(request.resource.data);
+        allow update: if isOwner(userId) && isValidReminder(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTask(request.resource.data);
+        allow update: if isOwner(userId) && isValidTask(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /messages/{messageId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow update: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

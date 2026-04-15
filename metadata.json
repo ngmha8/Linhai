@@ -1,0 +1,8 @@
+{
+  "name": "Linh AI Assistant",
+  "description": "Trợ lý cá nhân AI thông minh thuần Việt, hỗ trợ quản lý lịch trình, nhắc nhở, tìm kiếm thông tin và trò chuyện bằng giọng nói.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
