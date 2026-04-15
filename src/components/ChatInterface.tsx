@@ -201,8 +201,15 @@ export const ChatInterface: React.FC = () => {
         }
       }
 
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/messages`);
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      
+      // Handle Gemini API Quota/Rate Limit errors
+      if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        toast.error("Linh đang hơi bận vì nhận được quá nhiều yêu cầu. Bạn vui lòng đợi 1-2 phút rồi thử lại nhé!");
+      } else {
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/messages`);
+      }
     } finally {
       setIsTyping(false);
     }
