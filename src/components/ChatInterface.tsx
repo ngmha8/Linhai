@@ -147,7 +147,7 @@ export const ChatInterface: React.FC = () => {
         role: 'user',
         content: userMessage || (currentFile ? `Đã gửi tệp: ${currentFile.name}` : ""),
         timestamp: new Date().toISOString(),
-        file: currentFile || undefined
+        ...(currentFile ? { file: currentFile } : {})
       });
 
       // Get AI response with learned preferences and file context

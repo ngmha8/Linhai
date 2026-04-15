@@ -34,6 +34,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("AuthContext: Auth state changed, user:", user?.uid || 'none');
       clearTimeout(safetyTimeout);
+      
+      // RESTRICTION: Only allow specific users
+      const AUTHORIZED_EMAILS = ['ngmha8@gmail.com', 'manhha2@gmail.com'];
+      
+      if (user && !AUTHORIZED_EMAILS.includes(user.email || '')) {
+        console.warn("AuthContext: Unauthorized user attempted login:", user.email);
+        toast.error("Rất tiếc, ứng dụng này chỉ dành riêng cho chủ sở hữu.");
+        await signOut(auth);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       setUser(user);
       
       if (user) {
