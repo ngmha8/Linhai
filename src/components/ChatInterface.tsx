@@ -37,6 +37,8 @@ export const ChatInterface: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastProcessedLengthRef = useRef<number>(0);
+  const isExtractingRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!user) return;
@@ -77,13 +79,17 @@ export const ChatInterface: React.FC = () => {
 
   // Periodically extract preferences (e.g., every 5 messages)
   useEffect(() => {
-    if (messages.length > 0 && messages.length % 5 === 0) {
-      handlePreferenceExtraction();
+    const currentLength = messages.length;
+    if (currentLength > 0 && currentLength % 5 === 0 && currentLength > lastProcessedLengthRef.current) {
+      handlePreferenceExtraction(currentLength);
     }
   }, [messages.length]);
 
-  const handlePreferenceExtraction = async () => {
-    if (!user || !preferences) return;
+  const handlePreferenceExtraction = async (currentLength: number) => {
+    if (!user || !preferences || isExtractingRef.current) return;
+    
+    isExtractingRef.current = true;
+    lastProcessedLengthRef.current = currentLength;
     
     try {
       const newPrefs = await runLearning(messages, tasks, reminders);
@@ -94,6 +100,8 @@ export const ChatInterface: React.FC = () => {
       }
     } catch (error) {
       console.error("Learning failed:", error);
+    } finally {
+      isExtractingRef.current = false;
     }
   };
 
