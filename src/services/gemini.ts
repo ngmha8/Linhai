@@ -1,9 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { LearnedPreference } from "@/types";
 
-// Use a robust way to access the API Key
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenAI({ apiKey: GEMINI_KEY });
+// Use the correct initialization pattern
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface AssistantResponse {
   text: string;
@@ -23,16 +22,21 @@ export const processUserMessage = async (
     ? `\nUser Preferences you have learned:\n${learnedPreferences.map(p => `- ${p.content}`).join('\n')}`
     : "";
 
+  const parts: any[] = [{ text: message }];
+  
+  if (file) {
+    parts.push({
+      inlineData: {
+        data: file.data,
+        mimeType: file.type
+      }
+    });
+  }
+
   try {
-    // Use the models.generateContent pattern which seems to be what's available in this environment
-    const response = await (genAI as any).models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: file ? [{ text: message }, { inlineData: { data: file.data, mimeType: file.type } }] : [{ text: message }]
-        }
-      ],
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts }],
       config: {
         systemInstruction: `Bạn là Linh, một trợ lý cá nhân AI thông minh và thân thiện.
         Mục tiêu của bạn là giúp người dùng quản lý cuộc sống hiệu quả.
@@ -75,7 +79,8 @@ export const processUserMessage = async (
       }
     });
 
-    return JSON.parse(response.text || "{}");
+    const responseText = response.text;
+    return JSON.parse(responseText || "{}");
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     return { text: "Linh đang gặp một chút vấn đề kỹ thuật khi xử lý câu trả lời. Bạn thử lại sau giây lát nhé!" };
@@ -86,8 +91,8 @@ export const extractPreferences = async (messages: { role: string, content: stri
   const conversation = messages.map(m => `${m.role}: ${m.content}`).join('\n');
   
   try {
-    const response = await (genAI as any).models.generateContent({
-      model: "gemini-1.5-flash",
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: conversation }] }],
       config: {
         systemInstruction: `Analyze the conversation and extract any new user preferences, habits, or interests.
@@ -124,7 +129,8 @@ export const extractPreferences = async (messages: { role: string, content: stri
       }
     });
 
-    return JSON.parse(response.text || "[]");
+    const responseText = response.text;
+    return JSON.parse(responseText || "[]");
   } catch (error) {
     console.error("Preference extraction error:", error);
     return [];
