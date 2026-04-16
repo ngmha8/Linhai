@@ -75,9 +75,9 @@ export const ChatInterface: React.FC = () => {
     }
   }, [messages]);
 
-  // Periodically extract preferences (e.g., every 5 messages)
+  // Periodically extract preferences (e.g., every 10 messages)
   useEffect(() => {
-    if (messages.length > 0 && messages.length % 5 === 0) {
+    if (messages.length > 0 && messages.length % 10 === 0) {
       handlePreferenceExtraction();
     }
   }, [messages.length]);

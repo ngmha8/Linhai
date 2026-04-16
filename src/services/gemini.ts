@@ -21,27 +21,9 @@ export const processUserMessage = async (
     ? `\nUser Preferences you have learned:\n${learnedPreferences.map(p => `- ${p.content}`).join('\n')}`
     : "";
 
-  const parts: any[] = [{ text: message }];
-  
-  if (file) {
-    parts.push({
-      inlineData: {
-        data: file.data,
-        mimeType: file.type
-      }
-    });
-  }
-
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [
-      {
-        role: "user",
-        parts: parts
-      }
-    ],
-    config: {
-      systemInstruction: `Bạn là Linh, một trợ lý cá nhân AI thông minh và thân thiện.
+  const model = ai.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    systemInstruction: `Bạn là Linh, một trợ lý cá nhân AI thông minh và thân thiện.
       Mục tiêu của bạn là giúp người dùng quản lý cuộc sống hiệu quả.
       Bạn có khả năng:
       1. Tạo nhắc nhở (ví dụ: "Nhắc tôi gọi cho mẹ lúc 6h tối")
@@ -63,7 +45,7 @@ export const processUserMessage = async (
           "data": { ... dữ liệu liên quan ... }
         }
       }`,
-      tools: [{ googleSearch: {} }],
+    generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -79,24 +61,40 @@ export const processUserMessage = async (
         },
         required: ["text"]
       }
-    }
+    },
+    tools: [{ googleSearch: {} }] as any
   });
 
+  const parts: any[] = [{ text: message }];
+  
+  if (file) {
+    parts.push({
+      inlineData: {
+        data: file.data,
+        mimeType: file.type
+      }
+    });
+  }
+
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts }]
+  });
+
+  const responseText = result.response.text();
+
   try {
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(responseText || "{}");
   } catch (e) {
-    return { text: response.text || "I'm sorry, I couldn't process that." };
+    return { text: responseText || "I'm sorry, I couldn't process that." };
   }
 };
 
 export const extractPreferences = async (messages: { role: string, content: string }[]): Promise<Partial<LearnedPreference>[]> => {
   const conversation = messages.map(m => `${m.role}: ${m.content}`).join('\n');
   
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [{ role: "user", parts: [{ text: conversation }] }],
-    config: {
-      systemInstruction: `Analyze the conversation and extract any new user preferences, habits, or interests.
+  const model = ai.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    systemInstruction: `Analyze the conversation and extract any new user preferences, habits, or interests.
       Look for:
       - Preferred times for activities (e.g., "I like to work out in the morning")
       - Communication styles (e.g., "Keep it brief")
@@ -114,6 +112,7 @@ export const extractPreferences = async (messages: { role: string, content: stri
         { "category": "schedule", "content": "Thích tập gym vào lúc 8h sáng", "confidence": 0.9 },
         { "category": "communication", "content": "Muốn nhận thông báo ngắn gọn", "confidence": 0.8 }
       ]`,
+    generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -130,8 +129,11 @@ export const extractPreferences = async (messages: { role: string, content: stri
     }
   });
 
+  const result = await model.generateContent(conversation);
+  const responseText = result.response.text();
+
   try {
-    return JSON.parse(response.text || "[]");
+    return JSON.parse(responseText || "[]");
   } catch (e) {
     return [];
   }
