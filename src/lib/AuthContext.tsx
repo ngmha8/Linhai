@@ -62,7 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(false);
         }, (error) => {
           console.error("AuthContext: Preferences listener error:", error);
-          setLoading(false); // Still set loading false so app can show error or login
+          // If it's a permission error, it might be because the user is not in the authorized list
+          // but the onSnapshot was triggered before the signOut in the auth listener.
+          if (error.message.includes('permission') || error.code === 'permission-denied') {
+            console.warn("AuthContext: Permission denied for preferences. User might be unauthorized.");
+          }
+          setLoading(false);
         });
 
         try {

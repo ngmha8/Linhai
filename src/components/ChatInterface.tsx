@@ -75,9 +75,9 @@ export const ChatInterface: React.FC = () => {
     }
   }, [messages]);
 
-  // Periodically extract preferences (e.g., every 20 messages)
+  // Periodically extract preferences (e.g., every 5 messages)
   useEffect(() => {
-    if (messages.length > 0 && messages.length % 20 === 0) {
+    if (messages.length > 0 && messages.length % 5 === 0) {
       handlePreferenceExtraction();
     }
   }, [messages.length]);
@@ -142,13 +142,18 @@ export const ChatInterface: React.FC = () => {
 
     try {
       // Save user message
-      await addDoc(messagesRef, {
+      const messageData: any = {
         uid: user.uid,
         role: 'user',
         content: userMessage || (currentFile ? `Đã gửi tệp: ${currentFile.name}` : ""),
         timestamp: new Date().toISOString(),
-        ...(currentFile ? { file: currentFile } : {})
-      });
+      };
+      
+      if (currentFile) {
+        messageData.file = currentFile;
+      }
+
+      await addDoc(messagesRef, messageData);
 
       // Get AI response with learned preferences and file context
       const context = messages.slice(-5).map(m => `${m.role}: ${m.content}`).join('\n');
@@ -201,15 +206,8 @@ export const ChatInterface: React.FC = () => {
         }
       }
 
-    } catch (error: any) {
-      console.error("Chat error:", error);
-      
-      // Handle Gemini API Quota/Rate Limit errors
-      if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        toast.error("Linh đang hơi bận vì nhận được quá nhiều yêu cầu. Bạn vui lòng đợi 1-2 phút rồi thử lại nhé!");
-      } else {
-        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/messages`);
-      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/messages`);
     } finally {
       setIsTyping(false);
     }

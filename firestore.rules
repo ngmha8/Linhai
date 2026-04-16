@@ -48,12 +48,16 @@ service cloud.firestore {
     
     function isAuthenticated() {
       return request.auth != null && 
-             (request.auth.token.email == "ngmha8@gmail.com" || request.auth.token.email == "manhha2@gmail.com") && 
              request.auth.token.email_verified == true;
     }
 
+    function isAuthorized() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "ngmha8@gmail.com" || request.auth.token.email == "manhha2@gmail.com");
+    }
+
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthorized() && request.auth.uid == userId;
     }
 
     function isDocOwner() {
@@ -111,8 +115,9 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      // Allow any authenticated user to read/create their own basic profile 
+      // so the app can check if they are authorized
+      allow read, create: if isAuthenticated() && request.auth.uid == userId;
       allow update: if isOwner(userId) && isValidUser(request.resource.data);
 
       match /reminders/{reminderId} {
