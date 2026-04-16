@@ -82,7 +82,13 @@ export const processUserMessage = async (
     const responseText = response.text;
     return JSON.parse(responseText || "{}");
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    const errorString = JSON.stringify(error);
+    console.error("Gemini API Error Details:", errorString);
+    
+    if (errorString.includes('429') || errorString.includes('RESOURCE_EXHAUSTED')) {
+      return { text: "LỖI HẠN MỨC (429): API Key của bạn đã hết lượt sử dụng miễn phí trong lúc này. Hãy thử lại sau 1 phút hoặc tạo một API Key trong 'NEW project' tại AI Studio nhé!" };
+    }
+    
     return { text: "Linh đang gặp một chút vấn đề kỹ thuật khi xử lý câu trả lời. Bạn thử lại sau giây lát nhé!" };
   }
 };
@@ -131,8 +137,9 @@ export const extractPreferences = async (messages: { role: string, content: stri
 
     const responseText = response.text;
     return JSON.parse(responseText || "[]");
-  } catch (error) {
-    console.error("Preference extraction error:", error);
+  } catch (error: any) {
+    const errorString = JSON.stringify(error);
+    console.error("Preference extraction error:", errorString);
     return [];
   }
 };
