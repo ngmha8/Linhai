@@ -35,7 +35,7 @@ export const processUserMessage = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: [{ role: "user", parts }],
       config: {
         systemInstruction: `Bạn là Linh, một trợ lý cá nhân AI thông minh và thân thiện.
@@ -45,7 +45,6 @@ export const processUserMessage = async (
         2. Tạo lịch trình/công việc (ví dụ: "Thêm lịch tập Gym vào sáng mai lúc 8h")
         3. Tóm tắt thông tin người dùng cung cấp.
         4. Đưa ra gợi ý cá nhân hóa dựa trên thói quen.
-        5. TÌM KIẾM THÔNG TIN: Bạn có quyền truy cập vào Google Search để trả lời các câu hỏi về kiến thức, tin tức, thời tiết hoặc bất kỳ thông tin nào cần cập nhật.
         
         Bối cảnh người dùng: ${context}${preferencesContext}
         
@@ -60,7 +59,6 @@ export const processUserMessage = async (
             "data": { ... dữ liệu liên quan ... }
           }
         }`,
-        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -98,7 +96,7 @@ export const extractPreferences = async (messages: { role: string, content: stri
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-flash-lite-preview",
       contents: [{ role: "user", parts: [{ text: conversation }] }],
       config: {
         systemInstruction: `Analyze the conversation and extract any new user preferences, habits, or interests.
